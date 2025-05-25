@@ -12,16 +12,22 @@ function showMessage(message, duration = 1000) {
 
 // Load saved stories on page load
 window.addEventListener("DOMContentLoaded", () => {
-  const savedStories = JSON.parse(localStorage.getItem("stories")) || [];
-  const storyList = document.getElementById("story-list");
+  fetch("/stories")
+    .then(response => response.json())
+    .then(savedStories => {
+      const storyList = document.getElementById("story-list");
 
-  savedStories.forEach(({ text, time }, i) => {
-    addStoryToList(text, new Date(time), savedStories.length - i);
-  });
+      savedStories.forEach(({ text, time }, i) => {
+        addStoryToList(text, new Date(time), savedStories.length - i);
+      });
 
-  if (savedStories.length > 0) {
-    storyList.style.display = "block";
-  }
+      if (savedStories.length > 0) {
+        storyList.style.display = "block";
+      }
+    })
+    .catch(error => {
+      console.error("Failed to load stories from server:", error);
+    });
 });
 
 function escapeHtml(text) {
@@ -63,39 +69,45 @@ document.getElementById("story-form").addEventListener("submit", function(event)
 
   const storyText = document.getElementById("story").value.trim();
   const username = document.getElementById("username").value.trim() || "Anonymous";
+
   if (storyText === "") {
     showMessage("Story cannot be empty!");
     return;
   }
   if (storyText.length > 5000) {
-    showMessage("Story is too long! Max 500 characters.");
+    showMessage("Story is too long! Max 5000 characters.");
     return;
   }
 
   const now = new Date();
 
-  // Save story to localStorage
-  const savedStories = JSON.parse(localStorage.getItem("stories")) || [];
-  savedStories.unshift({
-    text: storyText,
-    time: now.toISOString(),
-    user: username
-  }); // newest first
-
-  localStorage.setItem("stories", JSON.stringify(savedStories));
-
-  addStoryToList(storyText, now, savedStories.length, username);
-
-  document.getElementById("story-form").reset();
-
-  document.getElementById("username").value = "";
-
-  showMessage("Story submitted!");
+  // POST the story to the server
+  fetch("/stories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: storyText,
+      user: username,
+      time: now.toISOString()
+    })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("Failed to save story");
+    return response.json(); // assuming the server responds with the saved story
+  })
+  .then(savedStory => {
+    // Add the story to the list visually
+    addStoryToList(savedStory.text, new Date(savedStory.time), null, savedStory.user);
+    document.getElementById("story-form").reset();
+    document.getElementById("username").value = "";
+    showMessage("Story submitted!");
+  })
+  .catch(error => {
+    console.error("Error submitting story:", error);
+    showMessage("Failed to submit story. Please try again.");
+  });
 });
 
-document.getElementById("story-form").addEventListener("reset", function() {
-	showMessage("Story submitted!");
-});
 
 document.getElementById("clear-btn").addEventListener("click", () => {
   if (confirm("Are you sure you want to clear all stories?")) {
