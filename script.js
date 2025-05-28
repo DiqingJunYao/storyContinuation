@@ -62,8 +62,6 @@ function addStoryToList(text, date, index, username) {
   storyList.style.display = "block";
 }
 
-
-// Handle form submission
 document.getElementById("story-form").addEventListener("submit", function(event) {
   event.preventDefault();
 
@@ -81,8 +79,8 @@ document.getElementById("story-form").addEventListener("submit", function(event)
 
   const now = new Date();
 
-  // POST the story to the server
-  fetch("/stories", {
+  // Step 1: POST the story to the server
+  fetch("/uploads/" + username + ".json", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -92,22 +90,41 @@ document.getElementById("story-form").addEventListener("submit", function(event)
     })
   })
   .then(response => {
-    if (!response.ok) throw new Error("Failed to save story");
-    return response.json(); // assuming the server responds with the saved story
+    if (!response.ok) {
+      throw new Error("Failed to save story");
+    }
+
+    // Step 2: GET the story from the server
+
   })
-  .then(savedStory => {
-    // Add the story to the list visually
-    addStoryToList(savedStory.text, new Date(savedStory.time), null, savedStory.user);
+  .catch(error => {
+    console.error("Error submitting or loading story:", error);
+    showMessage("Failed to submit story. Please try again. " + error.message);
+  });
+  fetch("/uploads/" + username + ".json", {
+      method: "GET",
+      version: "1.1",
+      headers: { "Content-Type": "text/plain" }
+    })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Failed to load story");
+    }
+    return response.text();
+  })
+  .then(text => {
+    // Step 3: Display story
+    addStoryToList(text, now, null, username);
     document.getElementById("story-form").reset();
     document.getElementById("username").value = "";
     showMessage("Story submitted!");
   })
   .catch(error => {
-    console.error("Error submitting story:", error);
-    showMessage("Failed to submit story. Please try again.");
+    console.error("Error submitting or loading story:", error);
+    showMessage("Failed to submit story. Please try again. " + error.message);
   });
-});
 
+});
 
 document.getElementById("clear-btn").addEventListener("click", () => {
   if (confirm("Are you sure you want to clear all stories?")) {
