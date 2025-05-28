@@ -150,3 +150,45 @@ document.getElementById("delete-btn").addEventListener("click", () => {
   });
 });
 
+document.getElementById("cgi-form").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  const name = document.getElementById("name").value.trim();
+  const happy = document.getElementById("happy").checked ? "yes" : "no";
+  const sad = document.getElementById("sad").checked ? "yes" : "no";
+
+  const params = new URLSearchParams({
+    name: name,
+    happy: happy,
+    sad: sad
+  });
+
+  fetch("/cgi-bin/hello_process.py?" + params.toString(), {
+    method: "GET",
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    return response.text();
+  })
+  .then(html => {
+    // Open a new window
+    const newWindow = window.open("", "_blank");
+
+    if (newWindow) {
+      newWindow.document.open();
+      newWindow.document.write(html);  // Write CGI output
+      newWindow.document.close();
+      document.getElementById("cgi-form").reset();
+    } else {
+      console.error("Popup blocked. Please allow popups for this site.");
+    }
+  })
+  .catch(error => {
+    console.error("Fetch error:", error);
+  });
+
+});
+
+
