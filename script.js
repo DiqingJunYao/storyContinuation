@@ -22,10 +22,7 @@ function escapeHtml(text) {
 // Function to add story to the visible list
 function addStoryToList(text, date, username) {
   const li = document.createElement("li");
-
-  // const numberSpan = document.createElement("span");
-  // numberSpan.className = "story-number";
-  // numberSpan.textContent = `${index}. `; // Show index number with dot
+  li.setAttribute("data-username", username); // 👈 tag with username
 
   const timestampSpan = document.createElement("span");
   timestampSpan.className = "timestamp";
@@ -35,7 +32,6 @@ function addStoryToList(text, date, username) {
   userSpan.className = "story-user";
   userSpan.textContent = ` — by ${username}`;
 
-  // li.appendChild(numberSpan);
   li.appendChild(document.createTextNode(escapeHtml(text) + " "));
   li.appendChild(timestampSpan);
   li.appendChild(userSpan);
@@ -110,3 +106,47 @@ document.getElementById("clear-btn").addEventListener("click", () => {
     showMessage("All stories cleared.");
   }
 });
+
+document.getElementById("delete-btn").addEventListener("click", () => {
+  const username = document.getElementById("username").value.trim();
+  if (!username) {
+    showMessage("Please enter your username to delete your story.");
+    return;
+  }
+
+  fetch("/uploads/" + username + ".json", {
+    method: "DELETE",
+    version: "1.1",
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Failed to delete story");
+    }
+
+    // Remove only the story <li> with this username
+    const storyList = document.getElementById("story-list");
+    const storyItems = storyList.querySelectorAll("li[data-username]");
+    let deleted = false;
+
+    storyItems.forEach(item => {
+      if (item.getAttribute("data-username") === username) {
+        storyList.removeChild(item);
+        deleted = true;
+      }
+    });
+
+    // Optionally hide list if empty
+    if (!storyList.hasChildNodes()) {
+      storyList.style.display = "none";
+    }
+
+    document.getElementById("username").value = "";
+    showMessage(deleted ? "Story deleted successfully." : "No story found for that username.");
+  })
+  .catch(error => {
+    console.error("Error deleting story:", error);
+    showMessage("Failed to delete story. Please try again. " + error.message);
+  });
+});
+
